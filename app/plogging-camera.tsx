@@ -78,17 +78,11 @@ export default function PloggingCameraScreen() {
     wsRef.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
       
-      console.log('📦 [Plogging] 받은 데이터:', JSON.stringify(data, null, 2));
-      
       if (data.detections && data.detections.length > 0) {
         console.log(`📥 [Plogging] 감지: ${data.detection_count}개`);
         
         const scaleX = screenSize.width / imageSize.width;
         const scaleY = screenSize.height / imageSize.height;
-        
-        console.log(`📐 [Plogging] 스케일: X=${scaleX.toFixed(2)}, Y=${scaleY.toFixed(2)}`);
-        console.log(`📐 [Plogging] 화면: ${screenSize.width}x${screenSize.height}`);
-        console.log(`📐 [Plogging] 이미지: ${imageSize.width}x${imageSize.height}`);
         
         const scaledDetections = data.detections.map((det: any) => ({
           ...det,
@@ -99,9 +93,6 @@ export default function PloggingCameraScreen() {
             y2: det.bbox.y2 * scaleY,
           }
         }));
-        
-        console.log('📦 [Plogging] 스케일된 디텍션:', JSON.stringify(scaledDetections, null, 2));
-        console.log(`🎯 [Plogging] detections.length = ${scaledDetections.length}`);
         
         setDetections(scaledDetections);
       } else {
@@ -176,8 +167,6 @@ export default function PloggingCameraScreen() {
             const height = det.bbox.y2 - det.bbox.y1;
             const label = `${det.class_name} ${(det.confidence * 100).toFixed(0)}%`;
             
-            console.log(`🎨 [Plogging] 박스 ${idx}: x=${det.bbox.x1}, y=${det.bbox.y1}, w=${width}, h=${height}`);
-            
             return (
               <G key={`${idx}-${det.bbox.x1}-${det.bbox.y1}`}>
                 <Rect
@@ -235,12 +224,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   text: {
     color: '#fff',
     fontSize: 20,
     marginBottom: 20,
-    textAlign: 'center',
   },
   button: {
     backgroundColor: '#00FF00',
