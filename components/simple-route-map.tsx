@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { WebView } from 'react-native-webview';
 import { useNavigation } from '@react-navigation/native';
@@ -41,7 +41,7 @@ interface Location {
   lat: number;
   lng: number;
   name?: string;
-  grade?: 1 | 2 | 3; // 쓰레기 등급
+  grade?: 0 | 1 | 2 | 3; // 쓰레기 등급 (0은 내 위치)
 }
 
 interface SimpleRouteMapProps {
@@ -59,6 +59,7 @@ export default function SimpleRouteMap({ locations, onReset, onRouteCalculated }
     setCompletionPercentage,
     setRouteInfo: setGlobalRouteInfo,
     setGradeLocations,
+    generatedRoutes, // 이미지 정보를 가져오기 위해 추가
   } = usePloggingStore();
   
   console.log('SimpleRouteMap rendered with props:', {
@@ -74,7 +75,7 @@ export default function SimpleRouteMap({ locations, onReset, onRouteCalculated }
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedMarker, setSelectedMarker] = useState<{ name: string; grade: number } | null>(null);
+  const [selectedMarker, setSelectedMarker] = useState<{ name: string; grade: number; images: string[] } | null>(null);
   const [stopConfirmVisible, setStopConfirmVisible] = useState(false);
   const locationSubscription = useRef<any>(null);
 
@@ -857,17 +858,28 @@ export default function SimpleRouteMap({ locations, onReset, onRouteCalculated }
         onMessage={(event) => {
           try {
             const data = JSON.parse(event.nativeEvent.data);
-            console.log('Received message:', data);
+            console.log('📩 [Map] 메시지 수신:', data);
             if (data.type === 'markerClick') {
-              console.log('Opening modal for marker:', data.name, 'grade:', data.grade);
+              console.log('🎯 [Map] 마커 클릭:', data.name, 'grade:', data.grade);
+              
+              // Zustand에서 해당 경로의 이미지 찾기
+              const matchedRoute = generatedRoutes.find(
+                r => r.destination_name === data.name
+              );
+              
+              const images = matchedRoute?.scrapedImages || [];
+              console.log('📸 [Map] 찾은 이미지:', images.length, '개');
+              console.log('📸 [Map] 이미지 URLs:', images);
+              
               setSelectedMarker({
                 name: data.name,
-                grade: data.grade
+                grade: data.grade,
+                images: images
               });
               setModalVisible(true);
             }
           } catch (error) {
-            console.log('Message parsing error:', error);
+            console.log('❌ [Map] 메시지 파싱 에러:', error);
           }
         }}
         onError={(syntheticEvent) => {
@@ -930,6 +942,34 @@ export default function SimpleRouteMap({ locations, onReset, onRouteCalculated }
                   {selectedMarker.grade === 2 && '쓰레기가 중간 정도 밀집된 지역입니다.'}
                   {selectedMarker.grade === 3 && '쓰레기가 적게 밀집된 지역입니다.'}
                 </Text>
+                
+                {/* 이미지 섹션 */}
+                {selectedMarker.images && selectedMarker.images.length > 0 && (
+                  <View style={styles.imagesSection}>
+                    <Text style={styles.imagesSectionTitle}>현장 사진</Text>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.imagesContainer}
+                    >
+                      {selectedMarker.images.map((imageUrl, index) => (
+                        <View key={index} style={styles.imageWrapper}>
+                          <Image
+                            source={{ uri: imageUrl }}
+                            style={styles.modalImage}
+                            resizeMode="cover"
+                            onError={(error) => {
+                              console.error('❌ [Modal] 이미지 로드 실패:', imageUrl, error.nativeEvent.error);
+                            }}
+                            onLoad={() => {
+                              console.log('✅ [Modal] 이미지 로드 성공:', imageUrl);
+                            }}
+                          />
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
               </>
             )}
           </View>
@@ -1183,5 +1223,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  imagesSection: {
+    marginTop: 24,
+    gap: 12,
+  },
+  imagesSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  imagesContainer: {
+    gap: 12,
+  },
+  imageWrapper: {
+    width: 200,
+    height: 150,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: colors.Border2,
+  },
+  modalImage: {
+    width: '100%',
+    height: '100%',
   },
 });

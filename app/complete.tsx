@@ -36,7 +36,7 @@ export default function CompleteScreen() {
         <View style={styles.rewardSection}>
           <View style={styles.fishContainer}>
             <Image
-              source={require('../assets/Fish.png')}
+                  source={require('../assets/han.gif')}
               style={styles.fishImage}
               resizeMode="contain"
             />

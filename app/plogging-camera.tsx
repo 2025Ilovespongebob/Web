@@ -1,12 +1,32 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Dimensions } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Dimensions, Animated, Platform } from 'react-native';
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import Svg, { Rect, Text as SvgText, G } from 'react-native-svg';
+import { SvgXml } from 'react-native-svg';
 import RNFS from 'react-native-fs';
 import { PloggingBottomPanel } from '../components/ui/plogging-bottom-panel';
 import { useNavigation } from '@react-navigation/native';
+import { colors } from '../styles/colors';
+import * as Haptics from 'expo-haptics';
+import { Audio } from 'expo-av';
 
 const WS_URL = 'ws://10.150.150.224:8000/stream/ws';
+
+const warningSvg = `
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_155_123)">
+<path d="M13.9898 18.8673C13.7219 19.1352 13.3585 19.2857 12.9796 19.2857H7.02025C6.64138 19.2857 6.278 19.1352 6.0101 18.8673L1.13265 13.9899C0.864743 13.722 0.714233 13.3586 0.714233 12.9797V7.02031C0.714233 6.64144 0.864743 6.27807 1.13265 6.01017L6.0101 1.13271C6.278 0.864804 6.64138 0.714294 7.02025 0.714294H12.9796C13.3585 0.714294 13.7219 0.864804 13.9898 1.13271L18.8672 6.01017C19.1351 6.27807 19.2857 6.64144 19.2857 7.02031V12.9797C19.2857 13.3586 19.1351 13.722 18.8672 13.9899L13.9898 18.8673Z" stroke="#F8FAFC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M10 5.71429V10.3572" stroke="#F8FAFC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M9.99997 14.2857C9.80272 14.2857 9.64282 14.1258 9.64282 13.9286C9.64282 13.7313 9.80272 13.5714 9.99997 13.5714" stroke="#F8FAFC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M10 14.2857C10.1972 14.2857 10.3571 14.1258 10.3571 13.9286C10.3571 13.7313 10.1972 13.5714 10 13.5714" stroke="#F8FAFC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_155_123">
+<rect width="20" height="20" fill="white"/>
+</clipPath>
+</defs>
+</svg>
+`;
 
 export default function PloggingCameraScreen() {
   const navigation = useNavigation();
@@ -15,50 +35,127 @@ export default function PloggingCameraScreen() {
   const [count, setCount] = useState(0);
   const [detections, setDetections] = useState<any[]>([]);
   const [imageSize, setImageSize] = useState({ width: 1080, height: 1440 });
-  const [screenSize, setScreenSize] = useState({ width: 0, height: 0 });
+  const [screenSize, setScreenSize] = useState(() => {
+    const { width, height } = Dimensions.get('window');
+    console.log('📱 [Init] 초기 화면 크기:', width, 'x', height);
+    return { width, height };
+  });
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [soundObject, setSoundObject] = useState<Audio.Sound | null>(null);
   
   const device = useCameraDevice('back');
   const cameraRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const intervalRef = useRef<any>(null);
+  const notificationAnim = useRef(new Animated.Value(0)).current;
+
+  // 알림 소리 재생 함수
+  const playNotificationSound = async () => {
+    try {
+      // 로컬 dd.mp3 파일 사용
+      const { sound } = await Audio.Sound.createAsync(
+        require('../assets/sounds/dd.mp3'),
+        { shouldPlay: true, volume: 0.8 }
+      );
+      
+      setSoundObject(sound);
+      
+      // 재생 완료 후 언로드
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync();
+        }
+      });
+    } catch (error) {
+      console.log('🔇 [Sound] 소리 재생 실패:', error);
+    }
+  };
 
   useEffect(() => {
     console.log('🎯 [Detections] 상태 변경:', detections.length, '개');
     if (detections.length > 0) {
       console.log('   첫 번째 감지:', detections[0]);
+      
+      // 쓰레기 감지 시 알림 표시
+      if (!showNotification) {
+        setShowNotification(true);
+        
+        // 알림 소리 재생
+        playNotificationSound();
+        
+        // 햅틱 피드백
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        
+        Animated.timing(notificationAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      }
+    } else {
+      // 쓰레기 없을 때 알림 숨김
+      if (showNotification) {
+        Animated.timing(notificationAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setShowNotification(false);
+        });
+      }
     }
   }, [detections]);
 
   useEffect(() => {
-    const { width, height } = Dimensions.get('screen'); // window -> screen으로 변경
-    console.log('📱 [Screen Size] 초기 화면 크기:', width, 'x', height);
-    setScreenSize({ width, height });
-    
     (async () => {
       const status = await Camera.requestCameraPermission();
       setPermission(status);
       
       if (status === 'granted') {
+        // 오디오 모드 설정
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+        
         setTimeout(() => {
           handleStart();
         }, 1000);
       }
     })();
     
-    // 화면 크기 변경 감지
-    const subscription = Dimensions.addEventListener('change', ({ screen }) => {
-      console.log('📱 [Screen Size] 화면 크기 변경:', screen.width, 'x', screen.height);
-      setScreenSize({ width: screen.width, height: screen.height });
-    });
-    
+    // 컴포넌트 언마운트 시 정리
     return () => {
-      subscription?.remove();
+      console.log('🧹 [Cleanup] 컴포넌트 언마운트');
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      if (soundObject) {
+        soundObject.unloadAsync();
+      }
     };
   }, []);
 
   const handleStart = () => {
     console.log('🔥 [Plogging Camera] 시작!!!');
+    
+    // 기존 WebSocket이 있으면 정리
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    
+    // 기존 interval이 있으면 정리
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
     
     wsRef.current = new WebSocket(WS_URL);
     
@@ -101,10 +198,11 @@ export default function PloggingCameraScreen() {
         console.log('   이미지 크기:', imageSize.width, 'x', imageSize.height);
         console.log('   화면 크기:', screenSize.width, 'x', screenSize.height);
         
+        // 단순 비율 스케일링
         const scaleX = screenSize.width / imageSize.width;
         const scaleY = screenSize.height / imageSize.height;
         
-        console.log('   스케일:', scaleX.toFixed(3), 'x', scaleY.toFixed(3));
+        console.log('   스케일 X:', scaleX.toFixed(3), 'Y:', scaleY.toFixed(3));
         
         const scaledDetections = data.detections.map((det: any) => {
           const scaled = {
@@ -134,6 +232,10 @@ export default function PloggingCameraScreen() {
     
     wsRef.current.onerror = (error) => {
       console.error('❌❌❌ [WebSocket] 에러:', error);
+    };
+    
+    wsRef.current.onclose = () => {
+      console.log('🔌 [WebSocket] 연결 종료');
     };
   };
 
@@ -184,19 +286,33 @@ export default function PloggingCameraScreen() {
       style={styles.container}
       onLayout={(event) => {
         const { width, height } = event.nativeEvent.layout;
-        console.log('📐 [Layout] 실제 레이아웃 크기:', width, 'x', height);
-        if (width > 0 && height > 0) {
+        console.log('📐 [Layout] 컨테이너 레이아웃 크기:', width, 'x', height);
+        if (width > 0 && height > 0 && (screenSize.width !== width || screenSize.height !== height)) {
+          console.log('✅ [Layout] 화면 크기 업데이트:', width, 'x', height);
           setScreenSize({ width, height });
         }
       }}
     >
-      <Camera
-        ref={cameraRef}
+      <View 
         style={StyleSheet.absoluteFill}
-        device={device}
-        isActive={true}
-        photo={true}
-      />
+        onLayout={(event) => {
+          const { width, height } = event.nativeEvent.layout;
+          console.log('📐 [Layout] 카메라 영역 크기:', width, 'x', height);
+          if (width > 0 && height > 0 && (screenSize.width !== width || screenSize.height !== height)) {
+            console.log('✅ [Layout] 화면 크기 업데이트 (카메라):', width, 'x', height);
+            setScreenSize({ width, height });
+          }
+        }}
+      >
+        <Camera
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive={true}
+          photo={true}
+          enableZoomGesture={false}
+        />
+      </View>
       
       {/* 바운딩 박스 */}
       {detections.length > 0 && (
@@ -246,6 +362,29 @@ export default function PloggingCameraScreen() {
             );
           })}
         </Svg>
+      )}
+      
+      {/* 쓰레기 감지 알림 */}
+      {showNotification && (
+        <Animated.View
+          style={[
+            styles.notification,
+            {
+              opacity: notificationAnim,
+              transform: [
+                {
+                  translateY: notificationAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-100, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <SvgXml xml={warningSvg} width={20} height={20} />
+          <Text style={styles.notificationText}>쓰레기가 인식되었습니다</Text>
+        </Animated.View>
       )}
       
       {/* 뒤로가기 버튼 */}
@@ -310,5 +449,31 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 24,
     color: '#000',
+  },
+  notification: {
+    position: 'absolute',
+    top: 60,
+    left: '25%',
+    transform: [{ translateX: -200 }],
+    backgroundColor: colors.error,
+    borderRadius: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    width:200,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 9,
+  },
+  notificationText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    flex: 1,
   },
 });

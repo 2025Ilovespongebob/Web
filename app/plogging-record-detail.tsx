@@ -19,7 +19,22 @@ export default function PloggingRecordDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  const { location, distance, duration, date } = params;
+  const { location, distance, duration, date, imageUrl1, imageUrl2 } = params;
+  
+  console.log('📸 [Detail] 받은 파라미터:', params);
+  console.log('📸 [Detail] imageUrl1:', imageUrl1);
+  console.log('📸 [Detail] imageUrl2:', imageUrl2);
+  
+  // 이미지 URL 배열 생성
+  const images = [imageUrl1, imageUrl2].filter(url => {
+    const isValid = url && url !== 'undefined' && url !== 'null' && url !== '';
+    console.log('📸 [Detail] URL 검증:', url, '→', isValid);
+    return isValid;
+  });
+  
+  console.log('📸 [Detail] 최종 이미지 배열:', images);
+  console.log('📸 [Detail] 이미지 개수:', images.length);
+  
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -31,14 +46,31 @@ export default function PloggingRecordDetailScreen() {
       <ScrollView contentContainerStyle={styles.contentContainer}>
         {/* Stats Section */}
         <View style={styles.section}>
-          <Text style={styles.locationText}>이번 플로깅에서...</Text>
+          <Text style={styles.locationText}>{'이번 플로깅에서...'}</Text>
+        </View>
+
+        {/* 이미지 섹션 */}
+        <View style={styles.imagesSection}>
+          {images.length > 0 ? (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.imagesContainer}
+            >
+              
+            </ScrollView>
+          ) : (
+            <View style={styles.noImageContainer}>
+              <Text style={styles.noImageText}>현장 사진이 없습니다</Text>
+            </View>
+          )}
         </View>
 
         {/* Reward Section */}
         <View style={styles.rewardSection}>
           <View style={styles.fishContainer}>
             <Image
-              source={require('../assets/Fish.png')}
+              source={require('../assets/han.gif')}
               style={styles.fishImage}
               resizeMode="contain"
             />
@@ -87,7 +119,8 @@ export default function PloggingRecordDetailScreen() {
       <NavBar
         currentRoute="report"
         onNavigate={(route) => {
-          router.push(`/(tabs)/${route}` as any);
+          // 모든 탭 이동은 replace로 처리 (스택 초기화)
+          router.replace(`/(tabs)/${route}` as any);
         }}
       />
     </View>
@@ -153,6 +186,47 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     textAlign: 'center',
+  },
+  gradeText: {
+    ...typography.bodyRegular,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  sectionTitle: {
+    ...typography.h4,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
+  imagesSection: {
+    gap: 12,
+  },
+  imagesContainer: {
+    gap: 12,
+    paddingRight: 24,
+  },
+  imageWrapper: {
+    width: 280,
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: colors.Border2,
+  },
+  scrapedImage: {
+    width: '100%',
+    height: '100%',
+  },
+  noImageContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.Border2,
+    borderRadius: 12,
+  },
+  noImageText: {
+    ...typography.bodyRegular,
+    color: colors.textSecondary,
   },
   statsRow: {
     flexDirection: 'row',

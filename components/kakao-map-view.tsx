@@ -141,42 +141,119 @@ export default function KakaoMapView({
       newMarkers.forEach((markerData, index) => {
         const position = new kakao.maps.LatLng(markerData.lat, markerData.lng);
         
-        // 카테고리별 색상
-        const colors = {
-          1: '#ff6b6b',
-          2: '#ff69b4',
-          3: '#4dabf7'
-        };
+        // 사용자 위치 마커
+        if (markerData.isUserPosition) {
+          const userPositionSvg = \`
+            <svg width="40" height="46" viewBox="0 0 40 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <g filter="url(#filter0_d_7508_4625)">
+                <path d="M20 12L28 34L20 30.3333L12 34L20 12Z" fill="white"/>
+                <path d="M20 16L26 32L20 29.3333L14 32L20 16Z" fill="#155DFC"/>
+              </g>
+              <defs>
+                <filter id="filter0_d_7508_4625" x="0" y="0" width="40" height="48" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                  <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                  <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                  <feOffset/>
+                  <feGaussianBlur stdDeviation="6"/>
+                  <feComposite in2="hardAlpha" operator="out"/>
+                  <feColorMatrix type="matrix" values="0 0 0 0 0.0823529 0 0 0 0 0.364706 0 0 0 0 0.988235 0 0 0 1 0"/>
+                  <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_7508_4625"/>
+                  <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_7508_4625" result="shape"/>
+                </filter>
+              </defs>
+            </svg>
+          \`;
+          
+          const imageSrc = 'data:image/svg+xml;base64,' + btoa(userPositionSvg);
+          const imageSize = new kakao.maps.Size(40, 46);
+          const imageOption = { offset: new kakao.maps.Point(20, 46) };
+          const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
 
-        // 커스텀 마커 이미지
-        const imageSrc = 'data:image/svg+xml;base64,' + btoa(\`
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="50" viewBox="0 0 40 50">
-            <path d="M20 0C8.954 0 0 8.954 0 20c0 15 20 30 20 30s20-15 20-30C40 8.954 31.046 0 20 0z" 
-                  fill="\${colors[markerData.category]}" stroke="white" stroke-width="2"/>
-            <text x="20" y="25" font-size="16" font-weight="bold" fill="white" text-anchor="middle">\${index + 1}</text>
-          </svg>
-        \`);
-        
-        const imageSize = new kakao.maps.Size(40, 50);
-        const imageOption = { offset: new kakao.maps.Point(20, 50) };
-        const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+          const marker = new kakao.maps.Marker({
+            position: position,
+            image: markerImage,
+            title: markerData.name
+          });
 
-        const marker = new kakao.maps.Marker({
-          position: position,
-          image: markerImage,
-          title: markerData.name
-        });
+          marker.setMap(map);
+          markers.push(marker);
+        }
+        // grade가 있으면 쓰레기 등급 마커
+        else if (markerData.grade) {
+          const gradeColors = {
+            1: '#EF4444',
+            2: '#F97316',
+            3: '#EAB308'
+          };
+          
+          const gradeColor = gradeColors[markerData.grade] || '#EAB308';
+          
+          const svgContent = \`
+            <svg width="126" height="54" viewBox="0 0 126 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <g opacity="0.5">
+                <rect x="43" y="14" width="40" height="40" rx="20" fill="\${gradeColor}"/>
+              </g>
+              <rect x="0.5" y="0.5" width="125" height="23" rx="3.5" fill="\${gradeColor}"/>
+              <rect x="0.5" y="0.5" width="125" height="23" rx="3.5" stroke="white"/>
+              <text x="63" y="16" font-family="Arial" font-size="11" fill="white" text-anchor="middle">쓰레기 밀집 예상 \${markerData.grade}등급</text>
+              <path d="M63 34L67 24H59L63 34Z" fill="\${gradeColor}"/>
+            </svg>
+          \`;
+          
+          const overlayContent = document.createElement('div');
+          overlayContent.style.cursor = 'pointer';
+          overlayContent.style.position = 'relative';
+          overlayContent.innerHTML = svgContent;
+          
+          const customOverlay = new kakao.maps.CustomOverlay({
+            position: position,
+            content: overlayContent,
+            xAnchor: 0.5,
+            yAnchor: 1,
+            zIndex: 3
+          });
+          
+          customOverlay.setMap(map);
+          markers.push(customOverlay);
+        } 
+        // 일반 카테고리 마커
+        else {
+          const colors = {
+            1: '#ff6b6b',
+            2: '#ff69b4',
+            3: '#4dabf7'
+          };
 
-        marker.setMap(map);
-        markers.push(marker);
+          // 커스텀 마커 이미지
+          const imageSrc = 'data:image/svg+xml;base64,' + btoa(\`
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="50" viewBox="0 0 40 50">
+              <path d="M20 0C8.954 0 0 8.954 0 20c0 15 20 30 20 30s20-15 20-30C40 8.954 31.046 0 20 0z" 
+                    fill="\${colors[markerData.category]}" stroke="white" stroke-width="2"/>
+              <text x="20" y="25" font-size="16" font-weight="bold" fill="white" text-anchor="middle">\${index + 1}</text>
+            </svg>
+          \`);
+          
+          const imageSize = new kakao.maps.Size(40, 50);
+          const imageOption = { offset: new kakao.maps.Point(20, 50) };
+          const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
 
-        // 마커 클릭 이벤트
-        kakao.maps.event.addListener(marker, 'click', function() {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'markerClicked',
-            markerId: markerData.id
-          }));
-        });
+          const marker = new kakao.maps.Marker({
+            position: position,
+            image: markerImage,
+            title: markerData.name
+          });
+
+          marker.setMap(map);
+          markers.push(marker);
+
+          // 마커 클릭 이벤트
+          kakao.maps.event.addListener(marker, 'click', function() {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'markerClicked',
+              markerId: markerData.id
+            }));
+          });
+        }
       });
 
       // 경로 그리기

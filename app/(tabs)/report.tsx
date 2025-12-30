@@ -2,18 +2,21 @@ import { Calendar } from '@/components/ui/calendar';
 import { PloggingRecordCard } from '@/components/ui/plogging-record-card';
 import { colors } from '@/styles/colors';
 import { typography } from '@/styles/typography';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMainReport } from '@/hooks/use-main-report';
+import { usePloggingStore } from '@/stores/plogging-store';
 
 export default function ReportScreen() {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const { data: mainReport, isLoading, error } = useMainReport();
+  const { generatedRoutes } = usePloggingStore(); // Zustand에서 경로 데이터 가져오기
 
   useEffect(() => {
     console.log('📋 [Report Screen] 화면 마운트');
+    console.log('💾 [Report Screen] 저장된 경로 데이터:', generatedRoutes.length, '개');
   }, []);
 
   useEffect(() => {
@@ -23,6 +26,8 @@ export default function ReportScreen() {
       if (mainReport.todayRoutes && mainReport.todayRoutes.length > 0) {
         mainReport.todayRoutes.forEach((route, index) => {
           console.log(`   경로 ${index + 1}:`, route.destinationName, `(등급 ${route.trashGrade})`);
+          console.log(`      imageUrl1:`, route.imageUrl1);
+          console.log(`      imageUrl2:`, route.imageUrl2);
         });
       }
     }
@@ -36,7 +41,7 @@ export default function ReportScreen() {
 
   // Mock data for marked dates (dates with activity)
   const markedDates = [
-    '2024-12-15', '2024-12-16', '2024-12-18', '2024-12-20'
+    '2024-12-16', '2024-12-17', '2024-12-23', '2024-12-31'
   ];
 
   return (
@@ -73,6 +78,17 @@ export default function ReportScreen() {
                 duration={`등급 ${route.trashGrade}`}
                 onPressDetail={() => {
                   console.log('📋 [Report Screen] 경로 카드 클릭:', route.destinationName);
+                  console.log('   이미지 URL1:', route.imageUrl1);
+                  console.log('   이미지 URL2:', route.imageUrl2);
+                  
+                  // Zustand에서 해당 경로의 scrapedImages 찾기
+                  const matchedRoute = generatedRoutes.find(
+                    r => r.destination_name === route.destinationName
+                  );
+                  
+                  const images = matchedRoute?.scrapedImages || [];
+                  console.log('   📸 scrapedImages:', images);
+                  
                   router.push({
                     pathname: '/plogging-record-detail',
                     params: {
@@ -80,8 +96,8 @@ export default function ReportScreen() {
                       distance: route.description || '정보 없음',
                       duration: `등급 ${route.trashGrade}`,
                       date: new Date().toISOString().split('T')[0],
-                      imageUrl1: route.imageUrl1,
-                      imageUrl2: route.imageUrl2,
+                      imageUrl1: images[0] || route.imageUrl1 || '',
+                      imageUrl2: images[1] || route.imageUrl2 || '',
                     },
                   });
                 }}

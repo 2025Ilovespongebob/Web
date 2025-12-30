@@ -22,9 +22,9 @@ const leftArrowSvg = `
 
 export default function PloggingScreen() {
   const navigation = useNavigation();
-  const { isNavigating } = usePloggingStore();
+  const { isNavigating, setGeneratedRoutes } = usePloggingStore();
   const { mutate: generateCourse, isPending } = useGenerateCourse();
-  const [locations, setLocations] = useState<Array<{ lat: number; lng: number; name: string; grade: 1 | 2 | 3 }>>([]);
+  const [locations, setLocations] = useState<Array<{ lat: number; lng: number; name: string; grade: 0 | 1 | 2 | 3 }>>([]);
 
   useEffect(() => {
     // 컴포넌트 마운트 시 현재 위치 가져와서 API 호출
@@ -53,6 +53,10 @@ export default function PloggingScreen() {
           {
             onSuccess: (data) => {
               console.log('✅ [Plogging] 경로 생성 성공:', data);
+              
+              // Zustand에 경로 데이터 저장
+              setGeneratedRoutes(data.routes);
+              console.log('💾 [Plogging] 경로 데이터 저장 완료:', data.routes.length, '개');
               
               // 경로 데이터를 지도용 위치 데이터로 변환
               const convertedLocations = convertRoutesToLocations(data.routes);

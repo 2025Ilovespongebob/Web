@@ -7,6 +7,8 @@ export interface TravelMarker {
   category: 1 | 2 | 3; // 1: 음식점, 2: 관광지, 3: 숙소
   day: number;
   isApiMarker?: boolean;
+  grade?: 1 | 2 | 3; // 쓰레기 등급 (있으면 쓰레기 마커로 표시)
+  isUserPosition?: boolean; // 사용자 위치 마커 여부
 }
 
 // 카테고리 정보

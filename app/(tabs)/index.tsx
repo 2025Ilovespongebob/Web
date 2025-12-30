@@ -132,9 +132,28 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>내 주변 스팟</Text>
         <View style={styles.mapContainer}>
           <KakaoMapView
-            markers={[]}
+            markers={[
+              {
+                id: 1,
+                lat: 35.1891808,
+                lng: 128.9034187,
+                name: '내 위치',
+                day: 1,
+                category: 1,
+                isUserPosition: true
+              },
+              {
+                id: 2,
+                lat: 35.1859741,
+                lng: 128.9029654,
+                grade: 1 as 1 | 2 | 3,
+                name: '쓰레기 밀집 예상 지역',
+                day: 1,
+                category: 1
+              }
+            ]}
             selectedDay={1}
-            initialLocation={userLocation}
+            initialLocation={{ lat: 35.1891808, lng: 128.9034187 }}
           />
         </View>
       </View>
