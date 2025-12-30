@@ -18,7 +18,7 @@ export const GradeTag: React.FC<GradeTagProps> = ({ grade = '1', style }) => {
             case '2':
                 return colors.Orange3; // Medium
             case '3':
-                return colors.Blue3; // Low/Clean
+                return colors.Yellow3; // Low/Clean
             default:
                 return colors.Gray3;
         }

@@ -3,22 +3,40 @@ import { PloggingRecordCard } from '@/components/ui/plogging-record-card';
 import { colors } from '@/styles/colors';
 import { typography } from '@/styles/typography';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useMainReport } from '@/hooks/use-main-report';
 
 export default function ReportScreen() {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const { data: mainReport, isLoading, error } = useMainReport();
+
+  useEffect(() => {
+    console.log('📋 [Report Screen] 화면 마운트');
+  }, []);
+
+  useEffect(() => {
+    if (mainReport) {
+      console.log('📋 [Report Screen] 메인 리포트 데이터 업데이트됨');
+      console.log('   오늘 경로 수:', mainReport.todayRoutes?.length || 0);
+      if (mainReport.todayRoutes && mainReport.todayRoutes.length > 0) {
+        mainReport.todayRoutes.forEach((route, index) => {
+          console.log(`   경로 ${index + 1}:`, route.destinationName, `(등급 ${route.trashGrade})`);
+        });
+      }
+    }
+  }, [mainReport]);
+
+  useEffect(() => {
+    if (error) {
+      console.error('❌ [Report Screen] 메인 리포트 조회 에러:', error);
+    }
+  }, [error]);
 
   // Mock data for marked dates (dates with activity)
   const markedDates = [
     '2024-12-15', '2024-12-16', '2024-12-18', '2024-12-20'
-  ];
-
-  // Mock data for activities
-  const activities = [
-    { id: 1, title: '광안리 해수욕장 코스', dist: '2.4km', time: '50분', date: '2024-12-30' },
-    { id: 2, title: '해운대 달맞이길 코스', dist: '3.1km', time: '1시간 10분', date: '2024-12-20' },
   ];
 
   return (
@@ -34,27 +52,49 @@ export default function ReportScreen() {
       />
 
       {/* History List */}
-        <View style={styles.activityList}>
-          {activities.map((activity) => (
-            <PloggingRecordCard
-              key={activity.id}
-              location={activity.title}
-              distance={activity.dist}
-              duration={activity.time}
-              onPressDetail={() => {
-                router.push({
-                  pathname: '/plogging-record-detail',
-                  params: {
-                    location: activity.title,
-                    distance: activity.dist,
-                    duration: activity.time,
-                    date: activity.date,
-                  },
-                });
-              }}
-            />
-          ))}
-        </View>
+      <View style={styles.activityList}>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.Blue3} />
+            <Text style={styles.loadingText}>경로 목록을 불러오는 중...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>경로 목록을 불러올 수 없습니다.</Text>
+          </View>
+        ) : mainReport && mainReport.todayRoutes && mainReport.todayRoutes.length > 0 ? (
+          <>
+            {console.log('📋 [Report Screen] 경로 카드 렌더링:', mainReport.todayRoutes.length, '개')}
+            {mainReport.todayRoutes.map((route, index) => (
+              <PloggingRecordCard
+                key={`${route.sequenceOrder}-${index}`}
+                location={route.destinationName}
+                distance={route.description || '정보 없음'}
+                duration={`등급 ${route.trashGrade}`}
+                onPressDetail={() => {
+                  console.log('📋 [Report Screen] 경로 카드 클릭:', route.destinationName);
+                  router.push({
+                    pathname: '/plogging-record-detail',
+                    params: {
+                      location: route.destinationName,
+                      distance: route.description || '정보 없음',
+                      duration: `등급 ${route.trashGrade}`,
+                      date: new Date().toISOString().split('T')[0],
+                      imageUrl1: route.imageUrl1,
+                      imageUrl2: route.imageUrl2,
+                    },
+                  });
+                }}
+              />
+            ))}
+          </>
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>오늘 완주한 경로가 없습니다.</Text>
+            <Text style={styles.emptySubText}>플로깅을 시작해보세요!</Text>
+          </View>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -119,5 +159,41 @@ const styles = StyleSheet.create({
   },
   activityList: {
     gap: 12,
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    ...typography.bodyRegular,
+    color: colors.textSecondary,
+  },
+  errorContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    ...typography.bodyRegular,
+    color: colors.error,
+    textAlign: 'center',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    ...typography.h4,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptySubText: {
+    ...typography.bodyRegular,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });

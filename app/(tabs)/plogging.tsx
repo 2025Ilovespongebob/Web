@@ -1,10 +1,12 @@
 import SimpleRouteMap from '@/components/simple-route-map';
 import { colors } from '@/styles/colors';
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { usePloggingStore } from '../../stores/plogging-store';
+import { useGenerateCourse, convertRoutesToLocations } from '../../hooks/use-generate-course';
+import * as Location from 'expo-location';
 
 const leftArrowSvg = `
 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -20,28 +22,96 @@ const leftArrowSvg = `
 
 export default function PloggingScreen() {
   const navigation = useNavigation();
+  const { isNavigating } = usePloggingStore();
+  const { mutate: generateCourse, isPending } = useGenerateCourse();
+  const [locations, setLocations] = useState<Array<{ lat: number; lng: number; name: string; grade: 1 | 2 | 3 }>>([]);
 
-  // 임시 위도/경도 데이터 (추후 백엔드에서 받아올 예정)
-  const tempLocations = [
-    { lat: 35.1925802, lng: 128.9072837, name: '목적지 1', grade: 1 as 1 | 2 | 3 },
-    { lat: 35.1914518, lng: 128.9175635, name: '목적지 2', grade: 3 as 1 | 2 | 3 },
-  ];
-  const {isNavigating} = usePloggingStore()
+  useEffect(() => {
+    // 컴포넌트 마운트 시 현재 위치 가져와서 API 호출
+    const fetchCourse = async () => {
+      try {
+        console.log('🔍 [Plogging] 위치 권한 요청 중...');
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        
+        if (status !== 'granted') {
+          Alert.alert('권한 필요', '위치 권한이 필요합니다.');
+          return;
+        }
+
+        console.log('📍 [Plogging] 현재 위치 가져오는 중...');
+        const currentPos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        const latitude = currentPos.coords.latitude;
+        const longitude = currentPos.coords.longitude;
+
+        console.log('🚀 [Plogging] API 호출 시작:', { latitude, longitude });
+
+        generateCourse(
+          { latitude, longitude },
+          {
+            onSuccess: (data) => {
+              console.log('✅ [Plogging] 경로 생성 성공:', data);
+              
+              // 경로 데이터를 지도용 위치 데이터로 변환
+              const convertedLocations = convertRoutesToLocations(data.routes);
+              console.log('📍 [Plogging] 변환된 위치 데이터:', convertedLocations);
+              
+              setLocations(convertedLocations);
+            },
+            onError: (error) => {
+              console.error('❌ [Plogging] 경로 생성 실패:', error);
+              Alert.alert('오류', '경로를 생성할 수 없습니다. 다시 시도해주세요.');
+            },
+          }
+        );
+      } catch (error) {
+        console.error('❌ [Plogging] 위치 가져오기 실패:', error);
+        Alert.alert('오류', '위치를 가져올 수 없습니다.');
+      }
+    };
+
+    fetchCourse();
+  }, []);
+
+  // 로딩 중이거나 위치 데이터가 없을 때
+  if (isPending || locations.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.Blue3} />
+          <Text style={styles.loadingText}>경로를 생성하는 중...</Text>
+        </View>
+        
+        {/* Back Button */}
+        {!isNavigating && (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.8}
+          >
+            <SvgXml xml={leftArrowSvg} width={18} height={18} />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <SimpleRouteMap locations={tempLocations} />
+      <SimpleRouteMap locations={locations} />
 
       {/* Back Button */}
-      {!isNavigating && 
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-        activeOpacity={0.8}
-      >
-        <SvgXml xml={leftArrowSvg} width={18} height={18} />
-      </TouchableOpacity>
-      }
+      {!isNavigating && (
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.8}
+        >
+          <SvgXml xml={leftArrowSvg} width={18} height={18} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -50,6 +120,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white'
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
+    fontWeight: '500',
   },
   backButton: {
     position: 'absolute',

@@ -24,7 +24,15 @@ export default function PloggingCameraScreen() {
   const intervalRef = useRef<any>(null);
 
   useEffect(() => {
-    const { width, height } = Dimensions.get('window');
+    console.log('🎯 [Detections] 상태 변경:', detections.length, '개');
+    if (detections.length > 0) {
+      console.log('   첫 번째 감지:', detections[0]);
+    }
+  }, [detections]);
+
+  useEffect(() => {
+    const { width, height } = Dimensions.get('screen'); // window -> screen으로 변경
+    console.log('📱 [Screen Size] 초기 화면 크기:', width, 'x', height);
     setScreenSize({ width, height });
     
     (async () => {
@@ -37,6 +45,16 @@ export default function PloggingCameraScreen() {
         }, 1000);
       }
     })();
+    
+    // 화면 크기 변경 감지
+    const subscription = Dimensions.addEventListener('change', ({ screen }) => {
+      console.log('📱 [Screen Size] 화면 크기 변경:', screen.width, 'x', screen.height);
+      setScreenSize({ width: screen.width, height: screen.height });
+    });
+    
+    return () => {
+      subscription?.remove();
+    };
   }, []);
 
   const handleStart = () => {
@@ -80,21 +98,33 @@ export default function PloggingCameraScreen() {
       
       if (data.detections && data.detections.length > 0) {
         console.log(`📥 [Plogging] 감지: ${data.detection_count}개`);
+        console.log('   이미지 크기:', imageSize.width, 'x', imageSize.height);
+        console.log('   화면 크기:', screenSize.width, 'x', screenSize.height);
         
         const scaleX = screenSize.width / imageSize.width;
         const scaleY = screenSize.height / imageSize.height;
         
-        const scaledDetections = data.detections.map((det: any) => ({
-          ...det,
-          bbox: {
-            x1: det.bbox.x1 * scaleX,
-            y1: det.bbox.y1 * scaleY,
-            x2: det.bbox.x2 * scaleX,
-            y2: det.bbox.y2 * scaleY,
-          }
-        }));
+        console.log('   스케일:', scaleX.toFixed(3), 'x', scaleY.toFixed(3));
+        
+        const scaledDetections = data.detections.map((det: any) => {
+          const scaled = {
+            ...det,
+            bbox: {
+              x1: det.bbox.x1 * scaleX,
+              y1: det.bbox.y1 * scaleY,
+              x2: det.bbox.x2 * scaleX,
+              y2: det.bbox.y2 * scaleY,
+            }
+          };
+          
+          console.log('   원본 bbox:', det.bbox);
+          console.log('   스케일 bbox:', scaled.bbox);
+          
+          return scaled;
+        });
         
         setDetections(scaledDetections);
+        console.log('   ✅ 바운딩 박스 설정 완료:', scaledDetections.length, '개');
       } else {
         setDetections([]);
       }
@@ -150,7 +180,16 @@ export default function PloggingCameraScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View 
+      style={styles.container}
+      onLayout={(event) => {
+        const { width, height } = event.nativeEvent.layout;
+        console.log('📐 [Layout] 실제 레이아웃 크기:', width, 'x', height);
+        if (width > 0 && height > 0) {
+          setScreenSize({ width, height });
+        }
+      }}
+    >
       <Camera
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
@@ -166,6 +205,14 @@ export default function PloggingCameraScreen() {
             const width = det.bbox.x2 - det.bbox.x1;
             const height = det.bbox.y2 - det.bbox.y1;
             const label = `${det.class_name} ${(det.confidence * 100).toFixed(0)}%`;
+            
+            console.log(`🎨 [Render] 박스 ${idx + 1}:`, {
+              x: det.bbox.x1,
+              y: det.bbox.y1,
+              width,
+              height,
+              label
+            });
             
             return (
               <G key={`${idx}-${det.bbox.x1}-${det.bbox.y1}`}>

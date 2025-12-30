@@ -109,7 +109,7 @@ export default function KakaoMapView({
     function initMap() {
       const container = document.getElementById('map');
       const options = {
-        center: new kakao.maps.LatLng(35.8345, 129.2248),
+        center: new kakao.maps.LatLng(35.1227, 128.8562),
         level: 6
       };
       map = new kakao.maps.Map(container, options);

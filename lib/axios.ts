@@ -2,18 +2,19 @@ import axios from 'axios';
 
 // 백엔드 API URL 설정
 const BACKEND_BASE_URL = __DEV__ 
-  ? 'http://172.20.10.3:8080/' // 개발 환경
-  : 'http://172.20.10.3:8080/'; // 프로덕션 환경
+  ? 'http://10.150.151.170:8080' // 개발 환경
+  : 'http://10.150.151.170:8080'; // 프로덕션 환경
+
 
 // AI 서버 URL 설정
 const AI_SERVER_BASE_URL = __DEV__
-  ? 'http://172.20.10.3:8080/' // 개발 환경
-  : 'http://172.20.10.3:8080/'; // 프로덕션 환경
+  ? 'http://10.150.150.224:8000' // 개발 환경
+  : 'http://10.150.150.224:8000'; // 프로덕션 환경
 
 // 백엔드 API 인스턴스
 export const axiosInstance = axios.create({
   baseURL: BACKEND_BASE_URL,
-  timeout: 10000,
+  timeout: 500000, // 500초 (8분 20초)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -22,7 +23,7 @@ export const axiosInstance = axios.create({
 // AI 서버 인스턴스
 export const aiServerInstance = axios.create({
   baseURL: AI_SERVER_BASE_URL,
-  timeout: 30000, // AI 처리 시간을 고려해 더 긴 타임아웃
+  timeout: 500000, // 500초 (8분 20초)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -31,14 +32,18 @@ export const aiServerInstance = axios.create({
 // 백엔드 API 요청 인터셉터
 axiosInstance.interceptors.request.use(
   (config) => {
-    // 여기에 토큰 추가 등의 로직을 넣을 수 있습니다
-    // const token = getToken();
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    console.log('🚀 [Backend API] 요청 시작');
+    console.log('   URL:', (config.baseURL || '') + (config.url || ''));
+    console.log('   Method:', config.method?.toUpperCase());
+    console.log('   Headers:', config.headers);
+    if (config.data) {
+      console.log('   Body:', config.data);
+    }
+    
     return config;
   },
   (error) => {
+    console.error('❌ [Backend API] 요청 설정 실패:', error);
     return Promise.reject(error);
   }
 );
@@ -46,14 +51,14 @@ axiosInstance.interceptors.request.use(
 // AI 서버 요청 인터셉터
 aiServerInstance.interceptors.request.use(
   (config) => {
-    // AI 서버용 인증 헤더 추가 (필요시)
-    // const aiToken = getAIToken();
-    // if (aiToken) {
-    //   config.headers['X-AI-API-Key'] = aiToken;
-    // }
+    console.log('🚀 [AI Server] 요청 시작');
+    console.log('   URL:', (config.baseURL || '') + (config.url || ''));
+    console.log('   Method:', config.method?.toUpperCase());
+    
     return config;
   },
   (error) => {
+    console.error('❌ [AI Server] 요청 설정 실패:', error);
     return Promise.reject(error);
   }
 );
@@ -61,19 +66,29 @@ aiServerInstance.interceptors.request.use(
 // 백엔드 API 응답 인터셉터
 axiosInstance.interceptors.response.use(
   (response) => {
+    console.log('✅ [Backend API] 응답 성공');
+    console.log('   URL:', response.config.url);
+    console.log('   Status:', response.status);
+    console.log('   Data:', JSON.stringify(response.data).substring(0, 200) + '...');
     return response;
   },
   (error) => {
     // 에러 처리 로직
     if (error.response) {
       // 서버가 응답을 반환한 경우
-      console.error('Backend Response error:', error.response.status, error.response.data);
+      console.error('❌ [Backend API] 응답 에러');
+      console.error('   URL:', error.config?.url);
+      console.error('   Status:', error.response.status);
+      console.error('   Data:', error.response.data);
     } else if (error.request) {
-      // 요청은 보냈지만 응답을 받지 못한 경우
-      console.error('Backend Request error:', error.request);
+      // 요청은 보냈지만 응답을 받지 못한 경우 (타임아웃 등)
+      console.error('❌ [Backend API] 타임아웃 또는 네트워크 에러');
+      console.error('   URL:', error.config?.url);
+      console.error('   Timeout:', error.config?.timeout, 'ms');
+      console.error('   Message:', error.message);
     } else {
       // 요청 설정 중 에러가 발생한 경우
-      console.error('Backend Error:', error.message);
+      console.error('❌ [Backend API] 요청 설정 에러:', error.message);
     }
     
     return Promise.reject(error);
@@ -83,15 +98,24 @@ axiosInstance.interceptors.response.use(
 // AI 서버 응답 인터셉터
 aiServerInstance.interceptors.response.use(
   (response) => {
+    console.log('✅ [AI Server] 응답 성공');
+    console.log('   URL:', response.config.url);
+    console.log('   Status:', response.status);
     return response;
   },
   (error) => {
     if (error.response) {
-      console.error('AI Server Response error:', error.response.status, error.response.data);
+      console.error('❌ [AI Server] 응답 에러');
+      console.error('   URL:', error.config?.url);
+      console.error('   Status:', error.response.status);
+      console.error('   Data:', error.response.data);
     } else if (error.request) {
-      console.error('AI Server Request error:', error.request);
+      console.error('❌ [AI Server] 타임아웃 또는 네트워크 에러');
+      console.error('   URL:', error.config?.url);
+      console.error('   Timeout:', error.config?.timeout, 'ms');
+      console.error('   Message:', error.message);
     } else {
-      console.error('AI Server Error:', error.message);
+      console.error('❌ [AI Server] 요청 설정 에러:', error.message);
     }
     
     return Promise.reject(error);

@@ -13,28 +13,42 @@ import { useMainReport } from '@/hooks/use-main-report';
 export default function HomeScreen() {
   const navigation = useNavigation();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  // const { data: mainReport, isLoading, error } = useMainReport();
-  const mainReport = null;
-  const isLoading = false;
-  const error = null;
+  const { data: mainReport, isLoading } = useMainReport();
 
   useEffect(() => {
+    console.log('🏠 [Home Screen] 화면 마운트');
+    
     // 현재 위치 가져오기
     (async () => {
       try {
+        console.log('📍 [Home Screen] 위치 권한 요청 중...');
         const { status } = await Location.requestForegroundPermissionsAsync();
+        
         if (status === 'granted') {
+          console.log('✅ [Home Screen] 위치 권한 승인됨');
           const location = await Location.getCurrentPositionAsync({});
-          setUserLocation({
+          const userLoc = {
             lat: location.coords.latitude,
             lng: location.coords.longitude,
-          });
+          };
+          console.log('📍 [Home Screen] 현재 위치:', userLoc);
+          setUserLocation(userLoc);
+        } else {
+          console.warn('⚠️ [Home Screen] 위치 권한 거부됨');
         }
       } catch (error) {
-        console.error('위치 가져오기 실패:', error);
+        console.error('❌ [Home Screen] 위치 가져오기 실패:', error);
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (mainReport) {
+      console.log('📊 [Home Screen] 메인 리포트 데이터 업데이트됨');
+      console.log('   오늘 완주:', mainReport.todayCount, '회');
+      console.log('   오늘 거리:', mainReport.todayDistance, 'm');
+    }
+  }, [mainReport]);
 
   // 거리를 km로 변환 (미터 단위로 받음)
   const formatDistance = (meters: number) => {
@@ -77,6 +91,7 @@ export default function HomeScreen() {
   };
 
   if (isLoading) {
+    console.log('⏳ [Home Screen] 메인 리포트 로딩 중...');
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color={colors.Blue3} />

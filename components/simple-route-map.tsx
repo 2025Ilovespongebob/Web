@@ -427,7 +427,7 @@ export default function SimpleRouteMap({ locations, onReset, onRouteCalculated }
     function initMap() {
       const container = document.getElementById('map');
       const options = {
-        center: new kakao.maps.LatLng(35.8345, 129.2248),
+        center: new kakao.maps.LatLng(35.1227, 128.8562),
         level: 6
       };
       map = new kakao.maps.Map(container, options);
@@ -522,6 +522,13 @@ export default function SimpleRouteMap({ locations, onReset, onRouteCalculated }
         } else {
           // Grade 마커는 CustomOverlay 사용 (클릭 가능하도록)
           const grade = location.grade || 1;
+          
+          // 0등급(내 위치)은 마커 표시 안 함
+          if (grade === 0) {
+            console.log('Skipping marker for grade 0 (user location)');
+            return;
+          }
+          
           let svgContent = '';
           let width = 126;
           
