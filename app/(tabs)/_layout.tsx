@@ -1,33 +1,58 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { NavBar } from '@/components/ui/nav';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+      }}
+      tabBar={({ state, navigation }) => {
+        const currentRoute = state.routes[state.index].name;
+        
+        // Hide navbar on plogging and camera screens
+        if (currentRoute === 'plogging' || currentRoute === 'camera') {
+          return null;
+        }
+        
+        return (
+          <NavBar
+            currentRoute={currentRoute}
+            onNavigate={(route) => navigation.navigate(route)}
+          />
+        );
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: '홈',
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="plogging"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: '플로깅',
+        }}
+      />
+      <Tabs.Screen
+        name="camera"
+        options={{
+          title: '카메라',
+        }}
+      />
+      <Tabs.Screen
+        name="report"
+        options={{
+          title: '리포트',
+        }}
+      />
+      <Tabs.Screen
+        name="my"
+        options={{
+          title: '마이',
         }}
       />
     </Tabs>
