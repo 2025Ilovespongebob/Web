@@ -51,14 +51,53 @@ export default function VideoStreamScreenRealtime() {
   const [showDetection, setShowDetection] = useState(false);
   const [totalDetections, setTotalDetections] = useState(0);
   const [frameCount, setFrameCount] = useState(0);
+  const [backendDetections, setBackendDetections] = useState<any[]>([]);
   
   const { model, isReady, error } = useTFJSModel();
   const isProcessingRef = useRef(false);
   const frameCountRef = useRef(0);
+  const cameraRef = useRef<any>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const lastSendTime = useRef(0);
 
   console.log('🎬 [스트리밍] 컴포넌트 렌더링');
   console.log('  - 카메라 권한:', permission?.granted);
   console.log('  - 모델 준비:', isReady);
+
+  // 백엔드 WebSocket 연결 (자동 시작)
+  useEffect(() => {
+    if (!permission?.granted) return;
+    
+    console.log('🔌 [Backend] WebSocket 연결 시작');
+    const ws = new WebSocket('ws://10.150.150.224:8000/stream/ws');
+    
+    ws.onopen = () => {
+      console.log('✅ [Backend] WebSocket 연결 성공');
+      wsRef.current = ws;
+    };
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.detections && data.detections.length > 0) {
+        console.log(`🎯 [Backend] ${data.detection_count}개 감지`);
+        setBackendDetections(data.detections);
+        setDetectionCount(data.detection_count);
+        setShowDetection(true);
+        setTimeout(() => setShowDetection(false), 2000);
+      } else {
+        setBackendDetections([]);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('❌ [Backend] WebSocket 에러:', error);
+    };
+    
+    return () => {
+      console.log('🔌 [Backend] WebSocket 종료');
+      ws.close();
+    };
+  }, [permission?.granted]);
 
   // 실시간 스트리밍 처리 (파이썬의 while True 루프)
   const handleCameraStream = (images: IterableIterator<tf.Tensor3D>) => {

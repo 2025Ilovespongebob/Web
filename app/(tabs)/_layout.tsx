@@ -12,8 +12,8 @@ export default function TabLayout() {
       tabBar={({ state, navigation }) => {
         const currentRoute = state.routes[state.index].name;
         
-        // Hide navbar on plogging and camera screens
-        if (currentRoute === 'plogging' || currentRoute === 'camera') {
+        // Hide navbar on plogging, camera, and detection screens
+        if (currentRoute === 'plogging' || currentRoute === 'camera' || currentRoute === 'detection' || currentRoute === 'simple-detection') {
           return null;
         }
         
@@ -41,6 +41,18 @@ export default function TabLayout() {
         name="camera"
         options={{
           title: '카메라',
+        }}
+      />
+      <Tabs.Screen
+        name="detection"
+        options={{
+          title: '실시간 디텍션',
+        }}
+      />
+      <Tabs.Screen
+        name="simple-detection"
+        options={{
+          title: '간단 디텍션',
         }}
       />
       <Tabs.Screen

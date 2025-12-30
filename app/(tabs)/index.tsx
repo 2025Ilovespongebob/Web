@@ -13,7 +13,10 @@ import { useMainReport } from '@/hooks/use-main-report';
 export default function HomeScreen() {
   const navigation = useNavigation();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const { data: mainReport, isLoading, error } = useMainReport();
+  // const { data: mainReport, isLoading, error } = useMainReport();
+  const mainReport = null;
+  const isLoading = false;
+  const error = null;
 
   useEffect(() => {
     // 현재 위치 가져오기
@@ -87,9 +90,23 @@ export default function HomeScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
         <Text style={styles.welcomeText}>환영합니다.</Text>
+        <Text style={{ color: 'red', fontSize: 20, marginTop: 20, fontWeight: 'bold' }}>
+          ⚠️ 아래 빨간 버튼을 눌러서 테스트하세요!
+        </Text>
       </View>
 
       <View style={styles.today}>
+        <Button 
+          textStyle={{ fontWeight: '700', fontSize: 20 }} 
+          onPress={() => {
+            console.log('🔥🔥🔥 버튼 클릭!!! 화면 이동 중...');
+            navigation.navigate('ultra-simple' as never);
+          }}
+          style={{ backgroundColor: '#FF0000', padding: 30 }}
+        >
+          🚀 여기 누르세요! 실시간 디텍션 테스트
+        </Button>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>오늘의 플로깅</Text>
         </View>

@@ -34,7 +34,6 @@ export const PloggingBottomPanel: React.FC<PloggingBottomPanelProps> = ({
     gradeLocations,
   } = usePloggingStore();
 
-  console.log('Bottom Panel - gradeLocations:', gradeLocations);
 
   const panelTranslateY = useRef(new Animated.Value(0)).current;
 
