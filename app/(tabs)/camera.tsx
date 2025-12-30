@@ -1,11 +1,11 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import UltraSimpleScreen from '../ultra-simple';
+import SmoothDetectionScreen from '../smooth-detection';
 
 export default function CameraScreen() {
   return (
     <View style={styles.container}>
-      <UltraSimpleScreen />
+      <SmoothDetectionScreen />
     </View>
   );
 }

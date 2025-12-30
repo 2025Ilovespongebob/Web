@@ -100,7 +100,7 @@ export default function HomeScreen() {
           textStyle={{ fontWeight: '700', fontSize: 20 }} 
           onPress={() => {
             console.log('🔥🔥🔥 버튼 클릭!!! 화면 이동 중...');
-            navigation.navigate('ultra-simple' as never);
+            navigation.navigate('smooth-detection' as never);
           }}
           style={{ backgroundColor: '#FF0000', padding: 30 }}
         >

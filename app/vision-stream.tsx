@@ -1,19 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, Dimensions } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import Svg, { Rect, Text as SvgText, G } from 'react-native-svg';
 
 const WS_URL = 'ws://10.150.150.224:8000/stream/ws';
 
-export default function UltraSimpleScreen() {
-  const [permission, requestPermission] = useCameraPermissions();
+export default function VisionStreamScreen() {
+  const [hasPermission, setHasPermission] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [count, setCount] = useState(0);
   const [detections, setDetections] = useState<any[]>([]);
   const [imageSize, setImageSize] = useState({ width: 1080, height: 1440 });
   const [screenSize, setScreenSize] = useState({ width: 0, height: 0 });
-  const [isScanning, setIsScanning] = useState(false); // 스캔 중 표시
   
+  const device = useCameraDevice('back');
   const cameraRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const intervalRef = useRef<any>(null);
@@ -22,16 +22,22 @@ export default function UltraSimpleScreen() {
     const { width, height } = Dimensions.get('window');
     setScreenSize({ width, height });
     
-    // 자동 시작
-    if (permission?.granted) {
-      setTimeout(() => {
-        handleStart();
-      }, 1000); // 1초 후 자동 시작
-    }
-  }, [permission]);
+    // 권한 요청
+    (async () => {
+      const status = await Camera.requestCameraPermission();
+      setHasPermission(status === 'granted');
+      
+      if (status === 'granted') {
+        // 자동 시작
+        setTimeout(() => {
+          handleStart();
+        }, 1000);
+      }
+    })();
+  }, []);
 
   const handleStart = () => {
-    console.log('🔥 [Button] 시작 버튼 클릭!!!');
+    console.log('🔥 [Vision] 스트리밍 시작!!!');
     
     // WebSocket 연결
     wsRef.current = new WebSocket(WS_URL);
@@ -40,37 +46,35 @@ export default function UltraSimpleScreen() {
       console.log('✅✅✅ [WebSocket] 연결 성공!!!');
       setIsRunning(true);
       
-      // 프레임 전송 시작 (3초에 1번으로 깜빡임 최소화)
+      // 프레임 전송 시작 (2초에 1번)
       intervalRef.current = setInterval(async () => {
         if (!cameraRef.current || !wsRef.current) return;
         
         try {
-          setIsScanning(true); // 스캔 시작
-          
-          const photo = await cameraRef.current.takePictureAsync({
-            base64: true,
-            quality: 0.05, // 최저 품질 (더 빠름)
-            skipProcessing: true,
-            exif: false,
+          const photo = await cameraRef.current.takePhoto({
+            qualityPrioritization: 'speed',
+            enableShutterSound: false,
           });
           
-          if (photo.base64 && wsRef.current.readyState === WebSocket.OPEN) {
-            if (photo.width && photo.height) {
-              setImageSize({ width: photo.width, height: photo.height });
-            }
+          // 파일을 base64로 읽기
+          const fs = require('react-native-fs');
+          const base64 = await fs.readFile(photo.path, 'base64');
+          
+          if (wsRef.current.readyState === WebSocket.OPEN) {
+            setImageSize({ width: photo.width, height: photo.height });
             
             wsRef.current.send(JSON.stringify({
-              frame: `data:image/jpeg;base64,${photo.base64}`,
+              frame: `data:image/jpeg;base64,${base64}`,
               conf_threshold: 0.5
             }));
           }
           
-          // 스캔 효과 지속 시간
-          setTimeout(() => setIsScanning(false), 200);
+          // 파일 삭제
+          await fs.unlink(photo.path);
         } catch (error) {
-          setIsScanning(false);
+          console.log('사진 촬영 에러:', error);
         }
-      }, 3000); // 3초에 1번 (깜빡임 빈도 33% 감소)
+      }, 2000);
     };
     
     wsRef.current.onmessage = (event) => {
@@ -107,46 +111,39 @@ export default function UltraSimpleScreen() {
   };
 
   const handleStop = () => {
-    console.log('⏹️ [Button] 중지 버튼 클릭');
+    console.log('⏹️ [Vision] 스트리밍 중지');
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (wsRef.current) wsRef.current.close();
     setIsRunning(false);
     setCount(0);
+    setDetections([]);
   };
 
-  if (!permission) {
+  if (!hasPermission) {
     return (
       <View style={styles.container}>
-        <Text style={styles.text}>권한 확인 중...</Text>
+        <Text style={styles.text}>카메라 권한 필요</Text>
       </View>
     );
   }
 
-  if (!permission.granted) {
+  if (!device) {
     return (
       <View style={styles.container}>
-        <Text style={styles.text}>카메라 권한 필요</Text>
-        <TouchableOpacity style={styles.button} onPress={requestPermission}>
-          <Text style={styles.buttonText}>권한 허용</Text>
-        </TouchableOpacity>
+        <Text style={styles.text}>카메라를 찾을 수 없습니다</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <CameraView
+      <Camera
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
-        facing="back"
+        device={device}
+        isActive={true}
+        photo={true}
       />
-      
-      {/* 스캔 효과 (깜빡임을 자연스럽게) */}
-      {isScanning && (
-        <View style={styles.scanOverlay} pointerEvents="none">
-          <View style={styles.scanLine} />
-        </View>
-      )}
       
       {/* 바운딩 박스 오버레이 */}
       {detections.length > 0 && (
@@ -196,7 +193,7 @@ export default function UltraSimpleScreen() {
       <View style={styles.overlay}>
         <View style={styles.statusContainer}>
           <Text style={styles.statusText}>
-            {isRunning ? `감지: ${detections.length}개 (${count})` : '대기 중'}
+            {isRunning ? `🎥 감지: ${detections.length}개 (${count})` : '⏸️ 대기 중'}
           </Text>
         </View>
         
