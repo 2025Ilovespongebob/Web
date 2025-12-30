@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  TextInput,
   ActivityIndicator,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
@@ -50,10 +49,6 @@ export default function VideoStreamScreen() {
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
   const [isStreaming, setIsStreaming] = useState(false);
-  const [backendUrl, setBackendUrl] = useState(DEFAULT_BACKEND_URL);
-  const [showUrlInput, setShowUrlInput] = useState(false);
-  const [frameCount, setFrameCount] = useState(0);
-  const [fps, setFps] = useState(0);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
   
   const cameraRef = useRef<any>(null);
@@ -61,18 +56,107 @@ export default function VideoStreamScreen() {
   const fpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const frameCountRef = useRef(0);
 
+  const captureAndSendFrame = async () => {
+    if (!cameraRef.current || !isStreaming) return;
+
+    try {
+      // 사진 촬영
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.5,
+        base64: false,
+        skipProcessing: true,
+      });
+
+      if (!photo || !photo.uri) {
+        console.log('Photo capture failed - no uri');
+        return;
+      }
+
+      // 백엔드로 전송
+      const formData = new FormData();
+      formData.append('frame', {
+        uri: photo.uri,
+        type: 'image/jpeg',
+        name: `frame_${Date.now()}.jpg`,
+      } as any);
+
+      formData.append('timestamp', Date.now().toString());
+      formData.append('frameNumber', frameCountRef.current.toString());
+
+      // 백엔드로 POST 요청
+      const response = await fetch(DEFAULT_BACKEND_URL, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.ok) {
+        frameCountRef.current += 1;
+      } else {
+        console.log('프레임 전송 실패:', response.status);
+      }
+    } catch (error) {
+      if (frameCountRef.current % 10 === 0) {
+        console.log('프레임 캡처/전송 오류 (10프레임마다 로그):', error);
+      }
+    }
+  };
+
+  const startStreaming = () => {
+    if (!DEFAULT_BACKEND_URL.trim()) {
+      console.log('No backend URL configured, skipping stream');
+      return;
+    }
+
+    if (isStreaming) {
+      console.log('Already streaming, skipping');
+      return;
+    }
+
+    console.log('Starting streaming...');
+    setIsStreaming(true);
+    frameCountRef.current = 0;
+
+    // 프레임 전송 (초당 5프레임)
+    streamIntervalRef.current = setInterval(() => {
+      captureAndSendFrame();
+    }, 200);
+
+    // FPS 계산
+    fpsIntervalRef.current = setInterval(() => {
+      // FPS 계산 로직 (필요시 추가)
+    }, 1000);
+  };
+
+  const stopStreaming = () => {
+    setIsStreaming(false);
+
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current);
+      streamIntervalRef.current = null;
+    }
+
+    if (fpsIntervalRef.current) {
+      clearInterval(fpsIntervalRef.current);
+      fpsIntervalRef.current = null;
+    }
+  };
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopStreaming();
     };
   }, []);
 
+  // Auto-start streaming
   useEffect(() => {
-    // 컴포넌트 마운트 시 자동으로 스트리밍 시작
     if (permission?.granted && cameraRef.current) {
       const timer = setTimeout(() => {
         startStreaming();
-      }, 1000); // 1초 후에 시작 (카메라 준비 시간)
+      }, 1000);
       
       return () => clearTimeout(timer);
     }
@@ -99,106 +183,6 @@ export default function VideoStreamScreen() {
     );
   }
 
-  const toggleCameraFacing = () => {
-    setFacing(current => (current === 'back' ? 'front' : 'back'));
-  };
-
-  const captureAndSendFrame = async () => {
-    if (!cameraRef.current || !isStreaming) return;
-
-    try {
-      // 사진 촬영
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.5, // 화질 (0.1 ~ 1.0)
-        base64: false, // base64 비활성화 (메모리 절약)
-        skipProcessing: true, // 빠른 처리
-      });
-
-      if (!photo || !photo.uri) {
-        console.log('Photo capture failed - no uri');
-        return;
-      }
-
-      // 백엔드로 전송
-      const formData = new FormData();
-      formData.append('frame', {
-        uri: photo.uri,
-        type: 'image/jpeg',
-        name: `frame_${Date.now()}.jpg`,
-      } as any);
-
-      // 타임스탬프 추가
-      formData.append('timestamp', Date.now().toString());
-      formData.append('frameNumber', frameCountRef.current.toString());
-
-      // 백엔드로 POST 요청
-      const response = await fetch(backendUrl, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (response.ok) {
-        frameCountRef.current += 1;
-        setFrameCount(frameCountRef.current);
-      } else {
-        console.log('프레임 전송 실패:', response.status);
-      }
-    } catch (error) {
-      // 에러를 조용히 처리 (너무 많은 로그 방지)
-      if (frameCountRef.current % 10 === 0) {
-        console.log('프레임 캡처/전송 오류 (10프레임마다 로그):', error);
-      }
-    }
-  };
-
-  const startStreaming = () => {
-    if (!backendUrl.trim()) {
-      console.log('No backend URL configured, skipping stream');
-      return;
-    }
-
-    if (isStreaming) {
-      console.log('Already streaming, skipping');
-      return;
-    }
-
-    console.log('Starting streaming...');
-    setIsStreaming(true);
-    frameCountRef.current = 0;
-    setFrameCount(0);
-    setFps(0);
-
-    // 프레임 전송 (초당 5프레임)
-    streamIntervalRef.current = setInterval(() => {
-      captureAndSendFrame();
-    }, 200); // 200ms = 5 FPS
-
-    // FPS 계산
-    let lastFrameCount = 0;
-    fpsIntervalRef.current = setInterval(() => {
-      const currentFps = frameCountRef.current - lastFrameCount;
-      setFps(currentFps);
-      lastFrameCount = frameCountRef.current;
-    }, 1000);
-  };
-
-  const stopStreaming = () => {
-    setIsStreaming(false);
-
-    if (streamIntervalRef.current) {
-      clearInterval(streamIntervalRef.current);
-      streamIntervalRef.current = null;
-    }
-
-    if (fpsIntervalRef.current) {
-      clearInterval(fpsIntervalRef.current);
-      fpsIntervalRef.current = null;
-    }
-  };
-
   return (
     <View style={styles.container}>
       <CameraView
@@ -206,28 +190,21 @@ export default function VideoStreamScreen() {
         style={styles.camera}
         facing={facing}
       >
+        {/* Back Button */}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('plogging' as never)}
+          activeOpacity={0.8}
+        >
+          <SvgXml xml={leftArrowSvg} width={18} height={18} />
+        </TouchableOpacity>
+
         {/* 쓰레기 인식 알림 */}
         <View style={styles.detectionNotification}>
           <View style={styles.detectionContent}>
             <SvgXml xml={warningSvg} width={16} height={16} />
             <Text style={styles.detectionText}>쓰레기가 인식되었습니다</Text>
           </View>
-        </View>
-
-        {/* 상단 정보 */}
-        <View style={styles.topBar}>
-          <View style={styles.statusContainer}>
-            <View style={[styles.statusDot, isStreaming && styles.statusDotActive]} />
-            <Text style={styles.statusText}>
-              {isStreaming ? '스트리밍 중' : '대기 중'}
-            </Text>
-          </View>
-          {isStreaming && (
-            <View style={styles.statsContainer}>
-              <Text style={styles.statsText}>프레임: {frameCount}</Text>
-              <Text style={styles.statsText}>FPS: {fps}</Text>
-            </View>
-          )}
         </View>
       </CameraView>
 
@@ -237,15 +214,6 @@ export default function VideoStreamScreen() {
         collapsed={isPanelCollapsed}
         onToggleCollapse={() => setIsPanelCollapsed(!isPanelCollapsed)}
       />
-
-      {/* Back Button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.navigate('plogging' as never)}
-        activeOpacity={0.8}
-      >
-        <SvgXml xml={leftArrowSvg} width={18} height={18} />
-      </TouchableOpacity>
     </View>
   );
 }
@@ -283,7 +251,7 @@ const styles = StyleSheet.create({
   },
   detectionNotification: {
     position: 'absolute',
-    top: 60,
+    top: 120,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -302,50 +270,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: 'white',
-  },
-  topBar: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#999',
-    marginRight: 8,
-  },
-  statusDotActive: {
-    backgroundColor: '#FF6B6B',
-  },
-  statusText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  statsContainer: {
-    marginTop: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  statsText: {
-    color: 'white',
-    fontSize: 12,
-    marginBottom: 2,
   },
   backButton: {
     position: 'absolute',

@@ -23,8 +23,8 @@ export default function PloggingScreen() {
 
   // 임시 위도/경도 데이터 (추후 백엔드에서 받아올 예정)
   const tempLocations = [
-    { lat: 35.1925802, lng: 128.9072837, name: '목적지 1' },
-    { lat: 35.1914518, lng: 128.9175635, name: '목적지 2' },
+    { lat: 35.1925802, lng: 128.9072837, name: '목적지 1', grade: 1 as 1 | 2 | 3 },
+    { lat: 35.1914518, lng: 128.9175635, name: '목적지 2', grade: 3 as 1 | 2 | 3 },
   ];
   const {isNavigating} = usePloggingStore()
 

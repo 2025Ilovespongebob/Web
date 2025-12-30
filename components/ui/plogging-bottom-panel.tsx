@@ -36,6 +36,8 @@ export const PloggingBottomPanel: React.FC<PloggingBottomPanelProps> = ({
     gradeLocations,
   } = usePloggingStore();
 
+  console.log('Bottom Panel - gradeLocations:', gradeLocations);
+
   const panelTranslateY = useRef(new Animated.Value(0)).current;
 
   const togglePanel = () => {
@@ -109,9 +111,13 @@ export const PloggingBottomPanel: React.FC<PloggingBottomPanelProps> = ({
           <View style={styles.divider} />
           <View style={styles.statsRow}>
             <Text style={styles.statText}>경로 내:</Text>
-            {gradeLocations.map((location, index) => (
-              <GradeTag key={index} grade={String(location.grade) as '1' | '2' | '3'} />
-            ))}
+            {gradeLocations && gradeLocations.length > 0 ? (
+              gradeLocations.map((location, index) => (
+                <GradeTag key={index} grade={String(location.grade) as '1' | '2' | '3'} />
+              ))
+            ) : (
+              <Text style={styles.statText}>등급 정보 없음</Text>
+            )}
           </View>
         </View>
         <Button

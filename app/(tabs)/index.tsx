@@ -69,6 +69,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   welcomeText: {
+    marginTop:24,
     ...typography.h3,
     fontWeight: '800',
     color: colors.textPrimary,

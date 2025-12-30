@@ -122,6 +122,7 @@ const styles = StyleSheet.create({
   },
   congratsText: {
     ...typography.h2,
+    paddingTop:12,
     fontWeight: '700',
     color: colors.Blue3,
     textAlign: 'center',
@@ -166,6 +167,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   statValue: {
+    paddingTop:6,
     ...typography.h2,
     fontWeight: '700',
     color: colors.Blue3,

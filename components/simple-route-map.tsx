@@ -117,6 +117,68 @@ export default function SimpleRouteMap({ locations, onReset, onRouteCalculated }
         return;
       }
 
+      // 현재 위치 가져오기
+      const currentPos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      const userLocation = {
+        lat: currentPos.coords.latitude,
+        lng: currentPos.coords.longitude,
+      };
+      
+      console.log('Current user location:', userLocation);
+      setCurrentLocation(userLocation);
+
+      // WebView에 현재 위치로 지도 중심 이동 및 확대 (강제)
+      if (webViewRef.current) {
+        console.log('Centering map to user location with force');
+        
+        const centerMessage = JSON.stringify({
+          type: 'centerToLocation',
+          location: userLocation,
+          zoom: 17,
+          force: true,
+        });
+        
+        // 안드로이드와 iOS 모두 지원하는 방식으로 전송
+        const sendCenterMessage = () => {
+          if (webViewRef.current) {
+            // postMessage 방식
+            webViewRef.current.postMessage(centerMessage);
+            
+            // injectJavaScript 방식 (안드로이드 백업)
+            webViewRef.current.injectJavaScript(`
+              (function() {
+                try {
+                  const data = ${centerMessage};
+                  const center = new kakao.maps.LatLng(data.location.lat, data.location.lng);
+                  if (typeof map !== 'undefined' && map) {
+                    map.setCenter(center);
+                    map.setLevel(4); // 레벨 4 = 확대
+                    console.log('Map centered to:', data.location.lat, data.location.lng);
+                  }
+                } catch (e) {
+                  console.error('Center map error:', e);
+                }
+              })();
+              true;
+            `);
+          }
+        };
+        
+        // 즉시 전송
+        sendCenterMessage();
+        
+        // 200ms 후 재전송
+        setTimeout(sendCenterMessage, 200);
+        
+        // 500ms 후 재전송
+        setTimeout(sendCenterMessage, 500);
+        
+        // 1000ms 후 마지막 재전송
+        setTimeout(sendCenterMessage, 1000);
+      }
+
       console.log('Setting isNavigating to true');
       
       // 실시간 위치 추적 시작
@@ -124,8 +186,8 @@ export default function SimpleRouteMap({ locations, onReset, onRouteCalculated }
       locationSubscription.current = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 1000, // 1초마다 업데이트
-          distanceInterval: 5, // 5미터 이동 시 업데이트
+          timeInterval: 1000,
+          distanceInterval: 5,
         },
         (location) => {
           console.log('Location update received:', location.coords.latitude, location.coords.longitude);
@@ -297,10 +359,20 @@ export default function SimpleRouteMap({ locations, onReset, onRouteCalculated }
       // Store in Zustand
       setGlobalRouteInfo(calculatedRouteInfo);
       
-      // Store grade locations
-      const gradeLocations = locations
-        .filter(loc => loc.grade)
-        .map(loc => ({ grade: loc.grade as 1 | 2 | 3 }));
+      // Store grade locations (중복 제거 및 정렬)
+      const uniqueGrades = new Set<1 | 2 | 3>();
+      locations.forEach(loc => {
+        if (loc.grade) {
+          uniqueGrades.add(loc.grade);
+        }
+      });
+      
+      // 등급 순서대로 정렬 (1, 2, 3)
+      const gradeLocations = Array.from(uniqueGrades)
+        .sort((a, b) => a - b)
+        .map(grade => ({ grade }));
+      
+      console.log('Grade locations:', gradeLocations);
       setGradeLocations(gradeLocations);
       
       // Notify parent component
@@ -745,6 +817,13 @@ export default function SimpleRouteMap({ locations, onReset, onRouteCalculated }
         stopNavigation();
       } else if (data.type === 'updateNavigation') {
         updateNavigation(data.location, data.heading);
+      } else if (data.type === 'centerToLocation') {
+        // 지도를 특정 위치로 이동하고 확대
+        const center = new kakao.maps.LatLng(data.location.lat, data.location.lng);
+        map.setCenter(center);
+        if (data.zoom) {
+          map.setLevel(21 - data.zoom); // Kakao 지도는 레벨이 낮을수록 확대 (1-14)
+        }
       }
     });
 

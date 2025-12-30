@@ -73,6 +73,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   headerTitle: {
+    paddingTop:16,
     ...typography.h2,
     fontWeight: '700',
     color: colors.textPrimary,
