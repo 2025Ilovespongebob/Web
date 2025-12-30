@@ -12,6 +12,7 @@ interface KakaoMapViewProps {
   onLocationSelect?: (coords: { lat: number; lng: number }) => void;
   onMarkerClick?: (marker: TravelMarker) => void;
   routes?: Array<{ from: number; to: number; path?: Array<{ x: number; y: number }> }>;
+  initialLocation?: { lat: number; lng: number } | null;
 }
 
 export default function KakaoMapView({
@@ -20,7 +21,8 @@ export default function KakaoMapView({
   isAddingMode = false,
   onLocationSelect,
   onMarkerClick,
-  routes = []
+  routes = [],
+  initialLocation = null,
 }: KakaoMapViewProps) {
   const webViewRef = useRef<WebView>(null);
 
@@ -35,6 +37,26 @@ export default function KakaoMapView({
       }));
     }
   }, [dayMarkers, routes]);
+
+  useEffect(() => {
+    if (webViewRef.current && initialLocation) {
+      // 위치가 업데이트되면 여러 번 메시지 전송 (확실하게)
+      const sendLocationUpdate = () => {
+        webViewRef.current?.postMessage(JSON.stringify({
+          type: 'setInitialLocation',
+          location: initialLocation,
+        }));
+      };
+
+      // 즉시 전송
+      sendLocationUpdate();
+      
+      // 0.2초, 0.5초, 1초 후에도 전송 (지도 로딩 대기)
+      setTimeout(sendLocationUpdate, 200);
+      setTimeout(sendLocationUpdate, 500);
+      setTimeout(sendLocationUpdate, 1000);
+    }
+  }, [initialLocation]);
 
   useEffect(() => {
     if (webViewRef.current) {
@@ -197,6 +219,11 @@ export default function KakaoMapView({
         updateMarkers(data.markers, data.routes);
       } else if (data.type === 'setAddingMode') {
         isAddingMode = data.isAddingMode;
+      } else if (data.type === 'setInitialLocation') {
+        const center = new kakao.maps.LatLng(data.location.lat, data.location.lng);
+        map.setCenter(center);
+        map.setLevel(5); // 적절한 줌 레벨
+        console.log('지도 중심 이동 (Android):', data.location.lat, data.location.lng);
       }
     });
 
@@ -208,6 +235,11 @@ export default function KakaoMapView({
         updateMarkers(data.markers, data.routes);
       } else if (data.type === 'setAddingMode') {
         isAddingMode = data.isAddingMode;
+      } else if (data.type === 'setInitialLocation') {
+        const center = new kakao.maps.LatLng(data.location.lat, data.location.lng);
+        map.setCenter(center);
+        map.setLevel(5); // 적절한 줌 레벨
+        console.log('지도 중심 이동 (iOS):', data.location.lat, data.location.lng);
       }
     });
 

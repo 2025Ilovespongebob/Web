@@ -13,8 +13,17 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "경로 찾기를 위해 현재 위치가 필요합니다.",
         "NSCameraUsageDescription": "실시간 영상 스트리밍을 위해 카메라가 필요합니다.",
-        "NSMicrophoneUsageDescription": "영상 녹화를 위해 마이크가 필요합니다."
-      }
+        "NSMicrophoneUsageDescription": "영상 녹화를 위해 마이크가 필요합니다.",
+        "LSApplicationQueriesSchemes": [
+          "kakaolink",
+          "kakaokompassauth",
+          "kakaoplus",
+          "kakaolink",
+          "kakaokompassauth",
+          "kakaoplus"
+        ]
+      },
+      "bundleIdentifier": "com.dehgns12.seavisionrn"
     },
     "android": {
       "adaptiveIcon": {
@@ -29,8 +38,39 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "CAMERA",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
         "RECORD_AUDIO"
-      ]
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "kakaolink"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "kakaolink"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
+      "package": "com.dehgns12.seavisionrn"
     },
     "web": {
       "output": "static",
@@ -47,6 +87,18 @@
           "backgroundColor": "#ffffff",
           "dark": {
             "backgroundColor": "#000000"
+          }
+        }
+      ],
+      [
+        "@react-native-kakao/core",
+        {
+          "nativeAppKey": "99e3fd064582ce7387fe6b1bc3eb1e9a",
+          "android": {
+            "customScheme": "kakao99e3fd064582ce7387fe6b1bc3eb1e9a"
+          },
+          "ios": {
+            "customScheme": "kakao99e3fd064582ce7387fe6b1bc3eb1e9a"
           }
         }
       ]

@@ -1,11 +1,11 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import VideoStreamScreen from '@/components/video-stream-screen';
+import VideoStreamScreenRealtime from '@/components/video-stream-screen-realtime';
 
 export default function CameraScreen() {
   return (
     <View style={styles.container}>
-      <VideoStreamScreen />
+      <VideoStreamScreenRealtime />
     </View>
   );
 }

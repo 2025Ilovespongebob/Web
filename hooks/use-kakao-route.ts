@@ -8,7 +8,6 @@ export const useKakaoRoute = () => {
   const [error, setError] = useState<string | null>(null);
 
   const getRouteInfo = useCallback(async (origin: TravelMarker, destination: TravelMarker): Promise<RouteInfo | null> => {
-    console.log(`🚗 카카오 API 경로 요청: ${origin.name} → ${destination.name}`);
     setLoading(true);
     setError(null);
     

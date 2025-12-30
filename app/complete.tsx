@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
+import { shareImage } from '../components/ui/KakaoShareWebView';
 
 const sendSvg = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -72,7 +73,7 @@ export default function CompleteScreen() {
           style={styles.shareButton}
           textStyle={styles.shareButtonText}
           leftIcon={<SvgXml xml={sendSvg} width={20} height={20} />}
-          onPress={() => console.log('Share')}
+          onPress={() => shareImage()}
         >
           카카오톡 공유하기
         </Button>

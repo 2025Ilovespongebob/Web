@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import * as Linking from 'expo-linking';
 import { NavBar } from '@/components/ui/nav';
 import { colors } from '@/styles/colors';
 import { typography } from '@/styles/typography';
@@ -7,7 +6,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-import { shareToKakao } from '../components/ui/KakaoShareWebView';
+import { shareImage } from '../components/ui/KakaoShareWebView';
 
 const sendSvg = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -78,14 +77,7 @@ export default function PloggingRecordDetailScreen() {
   style={styles.shareButton}
   textStyle={styles.shareButtonText}
   leftIcon={<SvgXml xml={sendSvg} width={20} height={20} />}
-  onPress={() =>
-    shareToKakao({
-      title: `플로깅 리포트 ${date}`,
-      description: `총 거리 ${distance} · 총 시간 ${duration}`,
-      imageUrl: 'https://storage.googleapis.com/ploytechcourse/128.png',
-      webUrl: 'https://github.com/2025Ilovespongebob/Web',
-    })
-  }
+  onPress={() => shareImage()}
 >
   카카오톡 공유하기
 </Button>

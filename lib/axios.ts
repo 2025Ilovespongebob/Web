@@ -2,13 +2,13 @@ import axios from 'axios';
 
 // 백엔드 API URL 설정
 const BACKEND_BASE_URL = __DEV__ 
-  ? 'http://localhost:3000/api' // 개발 환경
-  : 'https://your-production-api.com/api'; // 프로덕션 환경
+  ? 'http://172.20.10.3:8080/' // 개발 환경
+  : 'http://172.20.10.3:8080/'; // 프로덕션 환경
 
 // AI 서버 URL 설정
 const AI_SERVER_BASE_URL = __DEV__
-  ? 'http://localhost:5000/api' // 개발 환경
-  : 'https://your-ai-server.com/api'; // 프로덕션 환경
+  ? 'http://172.20.10.3:8080/' // 개발 환경
+  : 'http://172.20.10.3:8080/'; // 프로덕션 환경
 
 // 백엔드 API 인스턴스
 export const axiosInstance = axios.create({
@@ -68,12 +68,6 @@ axiosInstance.interceptors.response.use(
     if (error.response) {
       // 서버가 응답을 반환한 경우
       console.error('Backend Response error:', error.response.status, error.response.data);
-      
-      // 401 Unauthorized 처리
-      if (error.response.status === 401) {
-        // 로그아웃 처리 또는 토큰 갱신
-        console.log('Unauthorized - redirect to login');
-      }
     } else if (error.request) {
       // 요청은 보냈지만 응답을 받지 못한 경우
       console.error('Backend Request error:', error.request);

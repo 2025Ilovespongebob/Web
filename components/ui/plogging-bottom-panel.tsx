@@ -16,14 +16,12 @@ const bottomArrowSvg = `
 
 interface PloggingBottomPanelProps {
   onStartStop?: () => void;
-  onComplete?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
 export const PloggingBottomPanel: React.FC<PloggingBottomPanelProps> = ({
   onStartStop,
-  onComplete,
   collapsed = false,
   onToggleCollapse,
 }) => {
@@ -50,13 +48,6 @@ export const PloggingBottomPanel: React.FC<PloggingBottomPanelProps> = ({
     }).start();
 
     onToggleCollapse?.();
-  };
-
-  const handleComplete = () => {
-    if (onComplete) {
-      onComplete();
-    }
-    router.push('/complete');
   };
 
   return (
@@ -130,19 +121,6 @@ export const PloggingBottomPanel: React.FC<PloggingBottomPanelProps> = ({
         >
           {isNavigating ? '그만두기' : '플로깅 시작하기'}
         </Button>
-        
-        {isNavigating && (
-          <Button
-            onPress={handleComplete}
-            style={styles.completeButton}
-            textStyle={{
-              color: colors.background,
-              fontWeight: '700',
-            }}
-          >
-            완료하기 (임시)
-          </Button>
-        )}
       </View>
     </Animated.View>
   );
@@ -215,9 +193,5 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: colors.Gray2,
     color: colors.textPrimary,
-  },
-  completeButton: {
-    width: '100%',
-    backgroundColor: colors.Blue3,
   },
 });
