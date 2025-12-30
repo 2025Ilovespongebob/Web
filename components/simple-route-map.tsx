@@ -972,8 +972,8 @@ export default function SimpleRouteMap({ locations, onReset, onRouteCalculated }
         <TouchableOpacity 
           style={styles.cameraButton} 
           onPress={() => {
-            console.log('Camera button pressed - navigating to camera');
-            navigation.navigate('camera' as never);
+            console.log('Camera button pressed - navigating to plogging-camera');
+            navigation.navigate('plogging-camera' as never);
           }}
         >
           <SvgXml xml={searchVisualSvg} width={22} height={22} />
