@@ -119,8 +119,23 @@ export default function PloggingRecordDetailScreen() {
       <NavBar
         currentRoute="report"
         onNavigate={(route) => {
-          // 모든 탭 이동은 replace로 처리 (스택 초기화)
-          router.replace(`/(tabs)/${route}` as any);
+          console.log('🔄 [Navigation] 탭 이동:', route);
+          
+          // dismiss를 사용하여 모달/스택 닫기
+          if (router.canDismiss()) {
+            router.dismiss();
+          } else if (router.canGoBack()) {
+            router.back();
+          }
+          
+          // 탭으로 이동
+          setTimeout(() => {
+            if (route === 'index') {
+              router.push('/(tabs)/' as any);
+            } else {
+              router.push(`/(tabs)/${route}` as any);
+            }
+          }, 150);
         }}
       />
     </View>

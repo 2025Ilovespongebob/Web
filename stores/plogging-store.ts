@@ -30,7 +30,7 @@ export const usePloggingStore = create<PloggingState>((set) => ({
   isNavigating: false,
   completionPercentage: 0,
   routeInfo: null,
-  routeName: '광안리 해수욕장 코스',
+  routeName: '명지항 코스',
   gradeLocations: [],
   generatedRoutes: [],
   
@@ -44,7 +44,7 @@ export const usePloggingStore = create<PloggingState>((set) => ({
     isNavigating: false,
     completionPercentage: 0,
     routeInfo: null,
-    routeName: '광안리 해수욕장 코스',
+    routeName: '명지항 코스',
     gradeLocations: [],
     generatedRoutes: [],
   }),

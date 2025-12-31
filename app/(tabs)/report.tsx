@@ -14,24 +14,118 @@ export default function ReportScreen() {
   const { data: mainReport, isLoading, error } = useMainReport();
   const { generatedRoutes } = usePloggingStore(); // Zustand에서 경로 데이터 가져오기
 
+  // 날짜별 목 데이터
+  const mockDataByDate: Record<string, any[]> = {
+    '2024-12-31': [ // 오늘 - 3개
+      {
+        sequenceOrder: 1,
+        destinationName: '명지항',
+        trashGrade: 3,
+        description: '1.2km',
+        imageUrl1: 'https://search.pstatic.net/common/?src=http%3A%2F%2Fblogfiles.naver.net%2FMjAyMTA5MjFfMjc2%2FMDAxNjMyMjIxODYzMzgw.3lSE3lAHOXw3pYmJZ0LVvWnoKgLfmAUB1IA-AhvLfS4g.yvH5vHQK48-DpLXxLlx9bENzUGkuHqnu8m0ZktMKW3wg.JPEG.kigg55%2F55.jpg&type=f54_54',
+        imageUrl2: '',
+      },
+      {
+        sequenceOrder: 2,
+        destinationName: '녹산항남방파제등대',
+        trashGrade: 2,
+        description: '0.8km',
+        imageUrl1: '',
+        imageUrl2: '',
+      },
+      {
+        sequenceOrder: 3,
+        destinationName: '녹산항',
+        trashGrade: 1,
+        description: '0.5km',
+        imageUrl1: '',
+        imageUrl2: '',
+      },
+    ],
+    '2024-12-30': [ // 2개
+      {
+        sequenceOrder: 1,
+        destinationName: '광안리 해수욕장',
+        trashGrade: 2,
+        description: '1.5km',
+        imageUrl1: '',
+        imageUrl2: '',
+      },
+      {
+        sequenceOrder: 2,
+        destinationName: '수영강',
+        trashGrade: 1,
+        description: '0.9km',
+        imageUrl1: '',
+        imageUrl2: '',
+      },
+    ],
+    '2024-12-29': [ // 2개
+      {
+        sequenceOrder: 1,
+        destinationName: '해운대 해수욕장',
+        trashGrade: 3,
+        description: '2.0km',
+        imageUrl1: '',
+        imageUrl2: '',
+      },
+      {
+        sequenceOrder: 2,
+        destinationName: '동백섬',
+        trashGrade: 2,
+        description: '1.1km',
+        imageUrl1: '',
+        imageUrl2: '',
+      },
+    ],
+    '2024-12-22': [ // 1개
+      {
+        sequenceOrder: 1,
+        destinationName: '태종대',
+        trashGrade: 1,
+        description: '1.8km',
+        imageUrl1: '',
+        imageUrl2: '',
+      },
+    ],
+    '2024-12-07': [ // 1개
+      {
+        sequenceOrder: 1,
+        destinationName: '송도 해수욕장',
+        trashGrade: 2,
+        description: '1.3km',
+        imageUrl1: '',
+        imageUrl2: '',
+      },
+    ],
+  };
+
+  // 선택된 날짜 또는 오늘 날짜의 경로 가져오기
+  const getRoutesForDate = () => {
+    const dateKey = selectedDate || '2024-12-31'; // 선택된 날짜 또는 오늘
+    return mockDataByDate[dateKey] || mainReport?.todayRoutes || [];
+  };
+
+  const displayRoutes = getRoutesForDate();
+
   useEffect(() => {
     console.log('📋 [Report Screen] 화면 마운트');
     console.log('💾 [Report Screen] 저장된 경로 데이터:', generatedRoutes.length, '개');
-  }, []);
+    console.log('📅 [Report Screen] 선택된 날짜:', selectedDate || '오늘');
+  }, [selectedDate]);
 
   useEffect(() => {
     if (mainReport) {
       console.log('📋 [Report Screen] 메인 리포트 데이터 업데이트됨');
       console.log('   오늘 경로 수:', mainReport.todayRoutes?.length || 0);
-      if (mainReport.todayRoutes && mainReport.todayRoutes.length > 0) {
-        mainReport.todayRoutes.forEach((route, index) => {
+      console.log('   표시할 경로 수:', displayRoutes.length);
+      if (displayRoutes.length > 0) {
+        displayRoutes.forEach((route, index) => {
           console.log(`   경로 ${index + 1}:`, route.destinationName, `(등급 ${route.trashGrade})`);
-          console.log(`      imageUrl1:`, route.imageUrl1);
-          console.log(`      imageUrl2:`, route.imageUrl2);
         });
       }
     }
-  }, [mainReport]);
+  }, [mainReport, selectedDate]);
 
   useEffect(() => {
     if (error) {
@@ -40,8 +134,9 @@ export default function ReportScreen() {
   }, [error]);
 
   // Mock data for marked dates (dates with activity)
+  // 12월 7일, 22일, 29일, 30일, 31일(오늘)
   const markedDates = [
-    '2024-12-16', '2024-12-17', '2024-12-23', '2024-12-31'
+    '2024-12-07', '2024-12-22', '2024-12-29', '2024-12-30', '2024-12-31'
   ];
 
   return (
@@ -67,10 +162,10 @@ export default function ReportScreen() {
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>경로 목록을 불러올 수 없습니다.</Text>
           </View>
-        ) : mainReport && mainReport.todayRoutes && mainReport.todayRoutes.length > 0 ? (
+        ) : displayRoutes.length > 0 ? (
           <>
-            {console.log('📋 [Report Screen] 경로 카드 렌더링:', mainReport.todayRoutes.length, '개')}
-            {mainReport.todayRoutes.map((route, index) => (
+            {console.log('📋 [Report Screen] 경로 카드 렌더링:', displayRoutes.length, '개')}
+            {displayRoutes.map((route, index) => (
               <PloggingRecordCard
                 key={`${route.sequenceOrder}-${index}`}
                 location={route.destinationName}
@@ -95,7 +190,7 @@ export default function ReportScreen() {
                       location: route.destinationName,
                       distance: route.description || '정보 없음',
                       duration: `등급 ${route.trashGrade}`,
-                      date: new Date().toISOString().split('T')[0],
+                      date: selectedDate || new Date().toISOString().split('T')[0],
                       imageUrl1: images[0] || route.imageUrl1 || '',
                       imageUrl2: images[1] || route.imageUrl2 || '',
                     },
@@ -106,7 +201,9 @@ export default function ReportScreen() {
           </>
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>오늘 완주한 경로가 없습니다.</Text>
+            <Text style={styles.emptyText}>
+              {selectedDate ? '선택한 날짜에 완주한 경로가 없습니다.' : '오늘 완주한 경로가 없습니다.'}
+            </Text>
             <Text style={styles.emptySubText}>플로깅을 시작해보세요!</Text>
           </View>
         )}

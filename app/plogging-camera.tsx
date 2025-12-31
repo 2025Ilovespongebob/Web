@@ -8,7 +8,6 @@ import { PloggingBottomPanel } from '../components/ui/plogging-bottom-panel';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../styles/colors';
 import * as Haptics from 'expo-haptics';
-import { Audio } from 'expo-av';
 
 const WS_URL = 'ws://10.150.150.224:8000/stream/ws';
 
@@ -42,7 +41,7 @@ export default function PloggingCameraScreen() {
   });
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
-  const [soundObject, setSoundObject] = useState<Audio.Sound | null>(null);
+  const [prevDetectionCount, setPrevDetectionCount] = useState(0); // 이전 감지 개수 추적
   
   const device = useCameraDevice('back');
   const cameraRef = useRef<any>(null);
@@ -50,48 +49,28 @@ export default function PloggingCameraScreen() {
   const intervalRef = useRef<any>(null);
   const notificationAnim = useRef(new Animated.Value(0)).current;
 
-  // 알림 소리 재생 함수
-  const playNotificationSound = async () => {
-    try {
-      // 로컬 dd.mp3 파일 사용
-      const { sound } = await Audio.Sound.createAsync(
-        require('../assets/sounds/dd.mp3'),
-        { shouldPlay: true, volume: 0.8 }
-      );
-      
-      setSoundObject(sound);
-      
-      // 재생 완료 후 언로드
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync();
-        }
-      });
-    } catch (error) {
-      console.log('🔇 [Sound] 소리 재생 실패:', error);
-    }
-  };
-
   useEffect(() => {
-    console.log('🎯 [Detections] 상태 변경:', detections.length, '개');
-    if (detections.length > 0) {
+    const currentCount = detections.length;
+    console.log('🎯 [Detections] 상태 변경:', currentCount, '개 (이전:', prevDetectionCount, '개)');
+    
+    if (currentCount > 0) {
       console.log('   첫 번째 감지:', detections[0]);
       
       // 쓰레기 감지 시 알림 표시
       if (!showNotification) {
         setShowNotification(true);
         
-        // 알림 소리 재생
-        playNotificationSound();
-        
-        // 햅틱 피드백
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        
         Animated.timing(notificationAnim, {
           toValue: 1,
           duration: 300,
           useNativeDriver: true,
         }).start();
+      }
+      
+      // 감지 개수가 변경되었을 때 진동 (0 → N 또는 개수 변화)
+      if (prevDetectionCount !== currentCount) {
+        console.log('📳 [Alert] 감지 개수 변화 감지! 진동 피드백');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       }
     } else {
       // 쓰레기 없을 때 알림 숨김
@@ -105,6 +84,9 @@ export default function PloggingCameraScreen() {
         });
       }
     }
+    
+    // 이전 개수 업데이트
+    setPrevDetectionCount(currentCount);
   }, [detections]);
 
   useEffect(() => {
@@ -113,12 +95,6 @@ export default function PloggingCameraScreen() {
       setPermission(status);
       
       if (status === 'granted') {
-        // 오디오 모드 설정
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-        });
-        
         setTimeout(() => {
           handleStart();
         }, 1000);
@@ -135,9 +111,6 @@ export default function PloggingCameraScreen() {
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
-      }
-      if (soundObject) {
-        soundObject.unloadAsync();
       }
     };
   }, []);
@@ -179,7 +152,7 @@ export default function PloggingCameraScreen() {
             
             wsRef.current.send(JSON.stringify({
               frame: `data:image/jpeg;base64,${base64}`,
-              conf_threshold: 0.5
+              conf_threshold: 0.2
             }));
           }
           
@@ -187,7 +160,7 @@ export default function PloggingCameraScreen() {
         } catch (error) {
           console.log('❌ 에러:', error);
         }
-      }, 2000);
+      }, 500); // 0.5초마다 실행
     };
     
     wsRef.current.onmessage = (event) => {
